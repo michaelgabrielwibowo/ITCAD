@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-image-to-cad"
+version = "0.2.0"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.7", "typer>=0.12", "cadquery>=2.7"]
+
+[project.scripts]
+open-image-to-cad = "open_image_to_cad.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
