@@ -69,6 +69,13 @@ def run_cadquery(code: str, out_dir: Path, timeout_seconds: int = 20) -> dict:
 import json
 from pathlib import Path
 import cadquery as cq
+
+def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+    top = name.split(".")[0]
+    if top not in {"cadquery", "math", "typing"}:
+        raise ImportError(f"blocked import: {{name}}")
+    return __import__(name, globals, locals, fromlist, level)
+
 SAFE_BUILTINS = {{
     "abs": abs,
     "all": all,
