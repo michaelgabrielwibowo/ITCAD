@@ -11,6 +11,7 @@ from open_image_to_cad.schemas import RunRequest, RunResult
 
 def run(req: RunRequest) -> RunResult:
     run_id = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")
+    run_id = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     out = Path(req.output_dir) / run_id
     out.mkdir(parents=True, exist_ok=True)
 

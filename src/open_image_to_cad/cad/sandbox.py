@@ -22,6 +22,7 @@ def _call_name(node: ast.AST) -> str | None:
     if isinstance(node, ast.Attribute):
         return node.attr
     return None
+FORBIDDEN = {"os", "sys", "subprocess", "pathlib", "socket", "requests", "urllib", "shutil", "importlib"}
 
 
 def validate_imports(code: str, target_engine: str = "cadquery") -> tuple[bool, list[str]]:
@@ -34,6 +35,11 @@ def validate_imports(code: str, target_engine: str = "cadquery") -> tuple[bool, 
         tree = ast.parse(code)
     except SyntaxError as exc:
         return False, [f"syntax error: {exc}"]
+    errors: list[str] = []
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        return False, [f"syntax error: {e}"]
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
