@@ -50,6 +50,20 @@ def run_cadquery(code: str, out_dir: Path, timeout_seconds: int = 20) -> dict:
         report = _base_report(import_errors)
         (out_dir / "validation_report.json").write_text(json.dumps(report, indent=2))
         return report
+    syntax_ok = True
+    imports_ok, import_errors = validate_imports(code, "cadquery")
+    if not imports_ok:
+        return {
+            "ok": False,
+            "syntax_ok": syntax_ok,
+            "imports_ok": False,
+            "execution_ok": False,
+            "result_object_found": False,
+            "exports": {"step": False, "stl": False, "glb": False},
+            "errors": import_errors,
+            "warnings": [],
+            "attempts": 1,
+        }
 
     runner = f'''
 import json
@@ -88,6 +102,7 @@ SAFE_BUILTINS = {{
 }}
 
 ns = {{"__builtins__": SAFE_BUILTINS}}
+ns = {{}}
 code = Path(r"{py_path}").read_text()
 exec(code, ns, ns)
 result = ns.get("result")
@@ -95,11 +110,13 @@ rep = {{"result_object_found": result is not None, "step": False, "stl": False, 
 if result is not None:
     try:
         cq.exporters.export(result, r"{out_dir / 'model.step'}")
+        cq.exporters.export(result, r"{out_dir/'model.step'}")
         rep["step"] = True
     except Exception as e:
         rep["warnings"].append(f"STEP export failed: {{e}}")
     try:
         cq.exporters.export(result, r"{out_dir / 'model.stl'}")
+        cq.exporters.export(result, r"{out_dir/'model.stl'}")
         rep["stl"] = True
     except Exception as e:
         rep["warnings"].append(f"STL export failed: {{e}}")
@@ -157,3 +174,49 @@ print("{RUNNER_SENTINEL}" + json.dumps(rep))
     }
     (out_dir / "validation_report.json").write_text(json.dumps(report, indent=2))
     return report
+print(json.dumps(rep))
+'''
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as f:
+        f.write(runner)
+        runner_path = f.name
+
+    try:
+        proc = subprocess.run(["python", runner_path], capture_output=True, text=True, timeout=timeout_seconds)
+        if proc.returncode != 0:
+            return {
+                "ok": False,
+                "syntax_ok": syntax_ok,
+                "imports_ok": True,
+                "execution_ok": False,
+                "result_object_found": False,
+                "exports": {"step": False, "stl": False, "glb": False},
+                "errors": [proc.stderr.strip() or "execution failed"],
+                "warnings": [],
+                "attempts": 1,
+            }
+        rep = json.loads(proc.stdout.strip() or "{}")
+        out = {
+            "ok": bool(rep.get("result_object_found") and rep.get("step")),
+            "syntax_ok": syntax_ok,
+            "imports_ok": True,
+            "execution_ok": True,
+            "result_object_found": bool(rep.get("result_object_found")),
+            "exports": {"step": bool(rep.get("step")), "stl": bool(rep.get("stl")), "glb": False},
+            "errors": [],
+            "warnings": rep.get("warnings", []),
+            "attempts": 1,
+        }
+        (out_dir / "validation_report.json").write_text(json.dumps(out, indent=2))
+        return out
+    except subprocess.TimeoutExpired:
+        return {
+            "ok": False,
+            "syntax_ok": syntax_ok,
+            "imports_ok": True,
+            "execution_ok": False,
+            "result_object_found": False,
+            "exports": {"step": False, "stl": False, "glb": False},
+            "errors": [f"timeout after {timeout_seconds}s"],
+            "warnings": [],
+            "attempts": 1,
+        }
