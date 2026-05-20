@@ -11,3 +11,9 @@ def test_import_blocklist():
     ok, errs = validate_imports('import os\nresult=1')
     assert not ok
     assert errs
+
+
+def test_runtime_import_blocked():
+    ok, errs = validate_imports('x=__import__("os")\nresult=1')
+    assert not ok
+    assert any('disallowed runtime call' in e for e in errs)
