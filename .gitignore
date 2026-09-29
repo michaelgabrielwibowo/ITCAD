@@ -3,3 +3,14 @@ __pycache__/
 *.egg-info/
 outputs/
 .venv/
+
+# Local credentials: keep completed files out of Git
+.env
+.env.*
+!.env.example
+.secret.local
+service-account*.json
+*-service-account*.json
+application_default_credentials.json
+*.pem
+*.p12
